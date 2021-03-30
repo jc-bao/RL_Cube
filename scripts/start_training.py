@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+# training script
 import gym
 import time
 import numpy
@@ -13,19 +13,21 @@ import rospy
 import rospkg
 from functools import reduce
 # import our training environment
-import my_cartpole_task_env
+import my_one_disk_walk
 
 
 if __name__ == '__main__':
     
     rospy.init_node('cartpole_gym', anonymous=True, log_level=rospy.WARN)
     # Create the Gym environment
-    env = gym.make('CartPoleStayUp-v1')
+    # TODO change name
+    env = gym.make('MyMovingCubeOneDiskWalkEnv-v0')
     rospy.loginfo ( "Gym environment done")
         
     # Set the logging system
+    # TODO change name
     rospack = rospkg.RosPack()
-    pkg_path = rospack.get_path('cartpole_v0_training')
+    pkg_path = rospack.get_path('my_moving_cube_pkg')
     outdir = pkg_path + '/training_results'
     env = wrappers.Monitor(env, outdir, force=True) 
     rospy.loginfo ( "Monitor Wrapper started")
@@ -35,13 +37,18 @@ if __name__ == '__main__':
     # Loads parameters from the ROS param server
     # Parameters are stored in a yaml file inside the config directory
     # They are loaded at runtime by the launch file
-    Alpha = rospy.get_param("/cartpole_v1/alpha")
-    Epsilon = rospy.get_param("/cartpole_v1/epsilon")
-    Gamma = rospy.get_param("/cartpole_v1/gamma")
-    epsilon_discount = rospy.get_param("/cartpole_v1/epsilon_discount")
-    nepisodes = rospy.get_param("/cartpole_v1/nepisodes")
-    nsteps = rospy.get_param("/cartpole_v1/nsteps")
-    running_step = rospy.get_param("/cartpole_v1/running_step")
+    # Loads parameters from the ROS param server
+    # Parameters are stored in a yaml file inside the config directory
+    # They are loaded at runtime by the launch file
+    # TODO load parameter
+    Alpha = rospy.get_param("/moving_cube/alpha")
+    Epsilon = rospy.get_param("/moving_cube/epsilon")
+    Gamma = rospy.get_param("/moving_cube/gamma")
+    epsilon_discount = rospy.get_param("/moving_cube/epsilon_discount")
+    nepisodes = rospy.get_param("/moving_cube/nepisodes")
+    nsteps = rospy.get_param("/moving_cube/nsteps")
+
+    running_step = rospy.get_param("/moving_cube/running_step")
 
     # Initialises the algorithm that we are going to use for learning
     qlearn = qlearn.QLearn(actions=range(env.action_space.n),
@@ -111,5 +118,23 @@ if __name__ == '__main__':
     #print("Parameters: a="+str)
     rospy.loginfo("Overall score: {:0.2f}".format(last_time_steps.mean()))
     rospy.loginfo("Best 100 score: {:0.2f}".format(reduce(lambda x, y: x + y, l[-100:]) / len(l[-100:])))
+
+    # TODO define where to store
+    '''
+    rospack = rospkg.RosPack()
+    pkg_path = rospack.get_path('my_cube_training')
+    outdir = pkg_path + '/training_results'
+        
+    # Check if it already exists a training policy, and load it if so
+    qfile = os.path.join(outdir,"qlearn_states.npy")
+    # qfile = "qlearn_states.npy"
+    if (os.path.exists(qfile)):
+        print("Loading from file:",qfile)
+        qlearn.load(qfile)
+    else:
+        print("The File doesnt exist="+str(qfile))
+    '''
+    #Save the trained policy
+    qlearn.save(qfile)
 
     env.close()

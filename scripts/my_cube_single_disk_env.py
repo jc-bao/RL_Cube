@@ -1,66 +1,77 @@
-import rospy
+#! /usr/bin/env python
+# robot environment
 import numpy
+import rospy
+from openai_ros import robot_gazebo_env
+# TODO impoer msg type
+from std_msgs.msg import Float64
 from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
-from openai_ros import robot_gazebo_env
 
 
+# TODO init robo env from gazebo env
 class MyCubeSingleDiskEnv(robot_gazebo_env.RobotGazeboEnv):
-    """Superclass for all Robot environments.
+    """Superclass for all CubeSingleDisk environments.
     """
 
-    def __init__(self, init_roll_vel):
-        """Initializes a new Robot environment.
+    def __init__(self):
+        """Initializes a new CubeSingleDisk environment.
+
+        Args:
         """
         # Variables that we give through the constructor.
-        self.init_roll_vel = init_roll_vel
-        # Internal Vars
-        self.controllers_list = ['joint_state_controller','inertia_wheel_roll_joint_velocity_controller']
+        # None in this case
 
+        # Internal Vars
+        # TODO add controler Hint: $ rosservice call /moving_cube/controller_manager/list_controllers
+        self.controllers_list = ['joint_state_controller',
+                                 'inertia_wheel_roll_joint_velocity_controller'
+                                 ]
+        # TODO add name spacr Hint: $ rostopic list | grep controller
         self.robot_name_space = "moving_cube"
 
-        reset_controls_bool = True
-        
         # We launch the init function of the Parent Class robot_gazebo_env.RobotGazeboEnv
-        
-        super(MyRobotEnv, self).__init__(controllers_list=self.controllers_list,
+        super(MyCubeSingleDiskEnv, self).__init__(controllers_list=self.controllers_list,
                                                 robot_name_space=self.robot_name_space,
-                                                reset_controls=reset_controls_bool)
+                                                reset_controls=True)
+
+
 
         """
         To check any topic we need to have the simulations running, we need to do two things:
-        1) Unpause the simulation: without that the stream of data doesn't flow. This is for simulations
-        that are pause for whatever reason
-        2) If the simulation was running already for some reason, we need to reset the controllers.
-        This has to do with the fact that some plugins with tf don't understand the reset of the simulation
-        and need to be reset to work properly.
+        1) Unpause the simulation: without that th stream of data doesnt flow. This is for simulations
+        that are pause for whatever the reason
+        2) If the simulation was running already for some reason, we need to reset the controlers.
+        This has to do with the fact that some plugins with tf, dont understand the reset of the simulation
+        and need to be reseted to work properly.
         """
         self.gazebo.unpauseSim()
         self.controllers_object.reset_controllers()
         self._check_all_sensors_ready()
 
         # We Start all the ROS related Subscribers and publishers
+        # TODO add subscriber publisher
         rospy.Subscriber("/moving_cube/joint_states", JointState, self._joints_callback)
         rospy.Subscriber("/moving_cube/odom", Odometry, self._odom_callback)
-
         self._roll_vel_pub = rospy.Publisher('/moving_cube/inertia_wheel_roll_joint_velocity_controller/command',
                                              Float64, queue_size=1)
 
         self._check_publishers_connection()
 
         self.gazebo.pauseSim()
+
     # Methods needed by the RobotGazeboEnv
     # ----------------------------
-
+    
+    # TODO define check (remember to add sub functions)
     def _check_all_systems_ready(self):
         """
         Checks that all the sensors, publishers and other simulation systems are
         operational.
         """
         self._check_all_sensors_ready()
-        self._check_publishers_connection()
         return True
-    
+        
     def _check_all_sensors_ready(self):
         self._check_joint_states_ready()
         self._check_odom_ready()
@@ -89,6 +100,19 @@ class MyCubeSingleDiskEnv(robot_gazebo_env.RobotGazeboEnv):
 
         return self.odom
 
+
+    # CubeSingleDiskEnv virtual methods
+    # ----------------------------
+
+    
+    # TODO define callback / publisher
+    def _joints_callback(self, data):
+        self.joints = data
+    
+    def _odom_callback(self, data):
+        self.odom = data
+        
+    # TODO define connection check function
     def _check_publishers_connection(self):
         """
         Checks that all the publishers are working
@@ -106,15 +130,6 @@ class MyCubeSingleDiskEnv(robot_gazebo_env.RobotGazeboEnv):
 
         rospy.logdebug("All Publishers READY")
     
-    # CubeSingleDiskEnv virtual methods
-    # ----------------------------
-    
-    def _joints_callback(self, data):
-        self.joints = data
-    
-    def _odom_callback(self, data):
-        self.odom = data
-
     # Methods that the TaskEnvironment will need to define here as virtual
     # because they will be used in RobotGazeboEnv GrandParentClass and defined in the
     # TaskEnvironment.
@@ -123,7 +138,6 @@ class MyCubeSingleDiskEnv(robot_gazebo_env.RobotGazeboEnv):
         """Sets the Robot in its init pose
         """
         raise NotImplementedError()
-    
     
     def _init_env_variables(self):
         """Inits variables needed to be initialised each time we reset at the start
@@ -151,7 +165,7 @@ class MyCubeSingleDiskEnv(robot_gazebo_env.RobotGazeboEnv):
         
     # Methods that the TaskEnvironment will need.
     # ----------------------------
-
+    # TODO define how to move
     def move_joints(self, roll_speed):
         joint_speed_value = Float64()
         joint_speed_value.data = roll_speed
@@ -159,10 +173,9 @@ class MyCubeSingleDiskEnv(robot_gazebo_env.RobotGazeboEnv):
         self._roll_vel_pub.publish(joint_speed_value)
         self.wait_until_roll_is_in_vel(joint_speed_value.data)
     
+    # TODO sub function of move_joint
     def wait_until_roll_is_in_vel(self, velocity):
-        """
-        This method will wait until the roll disk wheel reaches the desired speed, with a certain error.
-        """
+    
         rate = rospy.Rate(10)
         start_wait_time = rospy.get_rostime().to_sec()
         end_wait_time = 0.0
@@ -183,9 +196,10 @@ class MyCubeSingleDiskEnv(robot_gazebo_env.RobotGazeboEnv):
         delta_time = end_wait_time- start_wait_time
         rospy.logdebug("[Wait Time=" + str(delta_time)+"]")
         return delta_time
-
+        
+    # TODO define how to get state
     def get_joints(self):
-    return self.joints
-
+        return self.joints
+    
     def get_odom(self):
         return self.odom
